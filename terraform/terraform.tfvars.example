@@ -1,0 +1,17 @@
+# --- PROJEKT EINSTELLUNGEN ---
+project_id = "dein-gcp-projekt-id"
+region     = "us-central1"
+
+# --- DATENBANK (ALLOYDB) ---
+# Das Passwort für den 'postgres' User in der AlloyDB
+db_password = "ein-sehr-sicheres-passwort-hier-einsetzen"
+
+# --- SICHERHEIT (API SECRETS) ---
+# Diese Keys müssen im HTTP-Header 'Authorization: Bearer <secret>' mitgesendet werden.
+# Tipp: Generiere lange Zufallsstrings (z.B. mit 'openssl rand -base64 32')
+
+# Secret für die Validierungs-Funktion (Eingang)
+api_secret_validation = "generiere-einen-zufalls-string-fuer-validation"
+
+# Secret für die Worker-Funktion (interner Check)
+api_secret_worker = "generiere-einen-zufalls-string-fuer-worker"

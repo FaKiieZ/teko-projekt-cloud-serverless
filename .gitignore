@@ -1,0 +1,24 @@
+# Terraform Binary
+terraform.exe
+
+# Terraform local state and plugins
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+.terraform.tfstate.lock.info
+
+# Terraform Variables (sensitive)
+*.tfvars
+*.tfvars.json
+
+# Local environment files
+.env
+.env.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Zip files generated for functions
+terraform/files/*.zip
