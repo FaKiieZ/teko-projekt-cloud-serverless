@@ -19,16 +19,18 @@ Das System nutzt eine Warteschlangen-basierte Architektur (Queue-Worker-Pattern)
 Wir nutzen **Terraform** zur Verwaltung der Infrastruktur. Eine passende `terraform.exe` liegt bereits im Hauptverzeichnis.
 
 ### 1. Voraussetzungen
-*   Ein Google Cloud Projekt (ID bereitstellen).
-*   **Abrechnung (Billing) aktiviert:** Das Projekt MUSS in der Google Cloud Console mit einem aktiven Rechnungskonto verknüpft sein (auch für Free Credits), sonst schlägt das Aktivieren der APIs fehl.
-*   **Google Cloud CLI (gcloud) installiert:** [Hier herunterladen](https://cloud.google.com/sdk/docs/install)
-*   **GCP Authentifizierung:** Damit Terraform Zugriff auf dein Konto hat, musst du dich einmalig lokal anmelden:
-    ```powershell
-    gcloud auth application-default login
-    ```
-    *Hinweis: Es öffnet sich ein Browserfenster zur Bestätigung.*
+
+- Ein Google Cloud Projekt (ID bereitstellen).
+- **Abrechnung (Billing) aktiviert:** Das Projekt MUSS in der Google Cloud Console mit einem aktiven Rechnungskonto verknüpft sein (auch für Free Credits), sonst schlägt das Aktivieren der APIs fehl.
+- **Google Cloud CLI (gcloud) installiert:** [Hier herunterladen](https://cloud.google.com/sdk/docs/install)
+- **GCP Authentifizierung:** Damit Terraform Zugriff auf dein Konto hat, musst du dich einmalig lokal anmelden:
+  ```powershell
+  gcloud auth application-default login
+  ```
+  _Hinweis: Es öffnet sich ein Browserfenster zur Bestätigung._
 
 ### 2. Infrastruktur hochfahren
+
 Navigiere in den `terraform` Ordner und bereite deine Variablen vor:
 
 1. Kopiere die Vorlage: `cp terraform.tfvars.example terraform.tfvars` (oder manuell umbenennen)
@@ -55,26 +57,43 @@ cd terraform
 
 ## 🔐 Sicherheit & API-Nutzung
 
-### API-Secret Schutz
-Um Missbrauch vorzubeugen, ist ein einfaches **API-Secret** konfiguriert. Jede Anfrage an die Validierungs-Funktion muss einen Authorization-Header enthalten.
+### Zugriffskontrolle (IAM & Restricted API)
 
-**Beispiel-Request (HTTP POST):**
-*   **URL:** Siehe `terraform apply` Output (`api_url`)
-*   **Method:** `POST`
-*   **Headers:**
-    *   `Content-Type: application/json`
-    *   `Authorization: Bearer <DEIN_API_SECRET_AUS_TFVARS>`
-*   **Body:**
-    ```json
-    {
-      "event_id": 1,
-      "user_id": "user123"
-    }
+Die API ist **nicht öffentlich** erreichbar. Nur explizit autorisierte Benutzer (du und deine Kollegen) können die API aufrufen.
+
+1.  **Berechtigung erteilen:** Füge die E-Mail-Adressen in der `terraform/terraform.tfvars` unter `authorized_invokers` hinzu:
+    ```hcl
+    authorized_invokers = [
+      "user:deine-email@gmail.com",
+      "user:kollege@gmail.com"
+    ]
     ```
+2.  **Terraform Apply:** Führe `../terraform apply` erneut aus, um die Berechtigungen zu setzen.
+
+### Authentifizierung beim Testen
+
+Da Google Cloud für den IAM-Check den `Authorization`-Header (ID-Token) verwendet, nutzen wir für unser internes Anwendungs-Secret den Header `X-API-Secret`.
+
+**Beispiel-Request (PowerShell/cURL):**
+Um die API zu testen, musst du ein Google Identity Token generieren:
+
+```powershell
+$URL = (../terraform output -raw api_url)
+$TOKEN = (gcloud auth print-identity-token)
+$SECRET = "DEIN_API_SECRET_AUS_TFVARS"
+
+
+curl -X POST $URL `
+  -H "Authorization: Bearer $TOKEN" `
+  -H "X-API-Secret: $SECRET" `
+  -H "Content-Type: application/json" `
+  -d '{"event_id": 1, "user_id": "test-user-001"}'
+```
 
 ### Kostenschutz
-*   **Max Instances:** Die Cloud Functions sind auf maximal **2 Instanzen** begrenzt, um Kostenexplosionen bei Tests zu vermeiden.
-*   **Kein Redis:** Alle Kapazitätsprüfungen laufen über die AlloyDB, um zusätzliche Memorystore-Kosten zu sparen.
+
+- **Max Instances:** Die Cloud Functions sind auf maximal **2 Instanzen** begrenzt, um Kostenexplosionen bei Tests zu vermeiden.
+- **Kein Redis:** Alle Kapazitätsprüfungen laufen über die AlloyDB, um zusätzliche Memorystore-Kosten zu sparen.
 
 ---
 
@@ -98,7 +117,7 @@ CREATE TABLE tickets (
 );
 
 -- Beispiel-Daten
-INSERT INTO events (name, total_capacity, remaining_capacity) 
+INSERT INTO events (name, total_capacity, remaining_capacity)
 VALUES ('Hallenstadion Konzert', 15000, 15000);
 ```
 
@@ -106,9 +125,9 @@ VALUES ('Hallenstadion Konzert', 15000, 15000);
 
 ## 📂 Projektstruktur
 
-*   `terraform/main.tf`: Die gesamte GCP Infrastruktur (IaC).
-*   `terraform/variables.tf`: Definition der Variablen.
-*   `terraform/terraform.tfvars.example`: Vorlage für Geheimnisse (Secrets).
-*   `terraform/src/validation`: Node.js Code für die Eingangs-Validierung.
-*   `terraform/src/worker`: Node.js Code für die finale Ticket-Verbuchung.
-*   `terraform.exe`: Terraform Binary für die lokale Ausführung.
+- `terraform/main.tf`: Die gesamte GCP Infrastruktur (IaC).
+- `terraform/variables.tf`: Definition der Variablen.
+- `terraform/terraform.tfvars.example`: Vorlage für Geheimnisse (Secrets).
+- `terraform/src/validation`: Node.js Code für die Eingangs-Validierung.
+- `terraform/src/worker`: Node.js Code für die finale Ticket-Verbuchung.
+- `terraform.exe`: Terraform Binary für die lokale Ausführung.

@@ -16,8 +16,9 @@ const pgConfig = {
 
 exports.validateTicket = async (req, res) => {
     // 1. Einfache Sicherheitsprüfung (API Secret)
-    const authHeader = req.headers['authorization'];
-    if (authHeader !== `Bearer ${apiSecret}`) {
+    // Wir verwenden nun 'x-api-secret', da 'Authorization' für IAM ID-Tokens reserviert ist.
+    const apiSecretHeader = req.headers['x-api-secret'];
+    if (apiSecretHeader !== apiSecret) {
         return res.status(403).send('Unauthorized: Invalid Secret');
     }
 

@@ -166,13 +166,15 @@ resource "google_cloudfunctions2_function" "validation_fn" {
   }
 }
 
-# Allow unauthenticated access to the validation function (public API)
-resource "google_cloud_run_service_iam_member" "public_access" {
+# Restricted access to the validation function (authorized users only)
+resource "google_cloud_run_service_iam_member" "authorized_access" {
+  for_each = toset(var.authorized_invokers)
+
   location = google_cloudfunctions2_function.validation_fn.location
   project  = google_cloudfunctions2_function.validation_fn.project
   service  = google_cloudfunctions2_function.validation_fn.name
   role     = "roles/run.invoker"
-  member   = "allUsers"
+  member   = each.value
 }
 
 # 9. Worker Function (Pub/Sub Trigger, 2nd Gen)

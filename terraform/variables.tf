@@ -26,3 +26,9 @@ variable "api_secret_worker" {
   type        = string
   sensitive   = true
 }
+
+variable "authorized_invokers" {
+  description = "List of IAM members authorized to invoke the validation function (e.g., 'user:email@domain.com', 'group:team@domain.com')."
+  type        = list(string)
+  default     = []
+}

@@ -7,7 +7,7 @@ region     = "us-central1"
 db_password = "ein-sehr-sicheres-passwort-hier-einsetzen"
 
 # --- SICHERHEIT (API SECRETS) ---
-# Diese Keys müssen im HTTP-Header 'Authorization: Bearer <secret>' mitgesendet werden.
+# Diese Keys müssen im HTTP-Header 'X-API-Secret: <secret>' mitgesendet werden.
 # Tipp: Generiere lange Zufallsstrings (z.B. mit 'openssl rand -base64 32')
 
 # Secret für die Validierungs-Funktion (Eingang)
@@ -15,3 +15,12 @@ api_secret_validation = "generiere-einen-zufalls-string-fuer-validation"
 
 # Secret für die Worker-Funktion (interner Check)
 api_secret_worker = "generiere-einen-zufalls-string-fuer-worker"
+
+# --- ZUGRIFFSKONTROLLE ---
+# Wer darf die API aufrufen? 
+# Falls leer, ist die API nicht öffentlich erreichbar.
+# Format: 'user:dein-name@gmail.com', 'group:team@ihredomain.de', 'serviceAccount:xyz@project.iam.gserviceaccount.com'
+authorized_invokers = [
+  "user:dein-name@gmail.com",
+  "user:kollege-name@gmail.com"
+]
