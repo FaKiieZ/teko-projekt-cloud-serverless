@@ -63,6 +63,10 @@ async function initializeSchema(client) {
       CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
     `);
 
+    await client.query(
+      "INSERT INTO events (id, event_name, total_capacity, remaining_capacity) VALUES ('1', 'TEKO Konzert vo Giuseppe', 35, 35)",
+    );
+
     console.log("Schema initialized successfully");
     schemaInitialized = true;
   } catch (err) {

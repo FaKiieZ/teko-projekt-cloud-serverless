@@ -31,8 +31,8 @@ resource "google_project_service" "services" {
     "run.googleapis.com",
     "eventarc.googleapis.com"
   ])
-  service = each.key
-  disable_on_destroy = true
+  service            = each.key
+  disable_on_destroy = false
 }
 
 # 3. CockroachDB Serverless
@@ -121,7 +121,7 @@ resource "google_cloudfunctions2_function" "validation_fn" {
   }
 
   service_config {
-    max_instance_count = 1
+    max_instance_count = 5
     available_memory   = "256Mi"
     environment_variables = {
       TOPIC_ID    = google_pubsub_topic.ticket_queue.id
@@ -142,6 +142,11 @@ resource "google_cloud_run_service_iam_member" "validation_invoker" {
   location = google_cloudfunctions2_function.validation_fn.location
   role     = "roles/run.invoker"
   member   = each.value
+
+  depends_on = [
+    google_project_service.services,
+    google_cloudfunctions2_function.validation_fn
+  ]
 }
 
 # 7. Worker Function (Pub/Sub Trigger)
@@ -162,7 +167,7 @@ resource "google_cloudfunctions2_function" "worker_fn" {
   }
 
   service_config {
-    max_instance_count = 2
+    max_instance_count = 5
     available_memory   = "256Mi"
     environment_variables = {
       DB_HOST     = cockroach_cluster.ticketing_db.regions[0].sql_dns
