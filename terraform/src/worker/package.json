@@ -1,0 +1,9 @@
+{
+  "name": "worker-function",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "pg": "^8.11.0",
+    "uuid": "^9.0.0"
+  }
+}

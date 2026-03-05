@@ -1,0 +1,15 @@
+# Terraform local state and plugins
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+.terraform.tfstate.lock.info
+
+# Terraform Variables (sensitive)
+*.tfvars
+
+# Zip files generated for functions
+terraform/files/*.zip
+
+# Node.js
+node_modules
