@@ -1,10 +1,10 @@
 const { PubSub } = require("@google-cloud/pubsub");
-const { Client } = require("pg");
+const { Pool } = require("pg");
 
 const pubsub = new PubSub();
 const topicName = process.env.TOPIC_ID;
 
-// Postgres Client Konfiguration (CockroachDB)
+// Postgres Pool Konfiguration (CockroachDB)
 const pgConfig = {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -12,7 +12,12 @@ const pgConfig = {
   database: process.env.DB_NAME,
   port: 26257,
   ssl: true,
+  max: 10,
+  idleTimeoutMillis: 30000,
 };
+
+// Globaler Pool zur Wiederverwendung
+const pool = new Pool(pgConfig);
 
 exports.validateTicket = async (req, res) => {
   const { event_id, user_id } = req.body;
@@ -20,12 +25,9 @@ exports.validateTicket = async (req, res) => {
     return res.status(400).send("Missing event_id or user_id");
   }
 
-  const client = new Client(pgConfig);
   try {
-    await client.connect();
-
     // Schnelle Abfrage der Restkapazität
-    const result = await client.query(
+    const result = await pool.query(
       "SELECT remaining_capacity FROM events WHERE id = $1",
       [event_id],
     );
@@ -57,9 +59,6 @@ exports.validateTicket = async (req, res) => {
     res.status(500).json({
       error: "Internal Server Error",
       message: err.message,
-      details: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });
-  } finally {
-    await client.end();
   }
 };
