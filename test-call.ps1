@@ -6,7 +6,6 @@ $totalRequests | ForEach-Object -Parallel {
     $currentUrl = $using:url
     $currentToken = $using:token
     
-    # Using curl.exe directly for speed and to avoid overhead
     curl.exe -s -o /dev/null -w "%{http_code}\n" -X POST $currentUrl `
              -H "Authorization: Bearer $currentToken" `
              -H "Content-Type: application/json" `
