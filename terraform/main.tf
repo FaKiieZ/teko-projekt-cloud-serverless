@@ -1,4 +1,4 @@
-# 1. Provider & Project Setup
+# 1. Provider Setup
 terraform {
   required_providers {
     google = {
@@ -21,7 +21,7 @@ provider "cockroach" {
   apikey = var.cockroach_api_key
 }
 
-# 2. Enable Required APIs
+# 2. Erforderliche APIs aktivieren
 resource "google_project_service" "services" {
   for_each = toset([
     "cloudfunctions.googleapis.com",
@@ -134,7 +134,7 @@ resource "google_cloudfunctions2_function" "validation_fn" {
   }
 }
 
-# Restrict validation function to specific users only
+# Zugriffskontrolle für Users
 resource "google_cloud_run_service_iam_member" "validation_invoker" {
   for_each = toset(var.authorized_invokers)
 

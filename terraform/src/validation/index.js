@@ -16,21 +16,20 @@ const pgConfig = {
 
 let schemaInitialized = false;
 
-// Initialize database schema if not exists
 async function initializeSchema(client) {
   if (schemaInitialized) return;
 
   try {
-    // Check if events table exists by trying to query it
+    // Prüfen ob events Tabelle bereits existiert (über ein Query)
     try {
       await client.query("SELECT 1 FROM events LIMIT 1");
       console.log("Schema already exists");
       schemaInitialized = true;
       return;
     } catch (checkErr) {
-      // Table doesn't exist, create it
+      // Tabelle existiert noch nicht
       if (checkErr.code !== "42P01") {
-        throw checkErr; // Some other error
+        throw checkErr; // Wenn ein anderer Fehler auftritt, diesen werfen.
       }
     }
 
@@ -86,10 +85,10 @@ exports.validateTicket = async (req, res) => {
   try {
     await client.connect();
 
-    // Initialize schema on first run
+    // Schema bei erstem Durchlauf generieren
     await initializeSchema(client);
 
-    // 2. Schnelle Abfrage der Restkapazität (nur lesend)
+    // Schnelle Abfrage der Restkapazität
     const result = await client.query(
       "SELECT remaining_capacity FROM events WHERE id = $1",
       [event_id],
@@ -101,7 +100,7 @@ exports.validateTicket = async (req, res) => {
         .json({ error: "SOLD_OUT", message: "Keine Tickets mehr verfügbar" });
     }
 
-    // 3. In die Queue schreiben (Pub/Sub)
+    // In die Queue schreiben (Pub/Sub)
     const data = JSON.stringify({
       event_id,
       user_id,

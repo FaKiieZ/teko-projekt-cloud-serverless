@@ -1,10 +1,15 @@
 # --- PROJEKT EINSTELLUNGEN ---
-project_id = "dein-gcp-projekt-id"
-region     = "us-central1"
+project_id     = "dein-gcp-projekt-id"
+region_gcloud  = "us-central1"
+region_cockroach = "europe-west3"
 
-# --- DATENBANK (ALLOYDB) ---
-# Das Passwort für den 'postgres' User in der AlloyDB
+# --- DATENBANK (COCKROACHDB) ---
+# Das Passwort für den CockroachDB-Admin-User
+# sensible Variable; gib ein starkes Passwort ein
 db_password = "ein-sehr-sicheres-passwort-hier-einsetzen"
+
+# CockroachDB API key (für das Terraform-Provider-Setup)
+cockroach_api_key = "dein-cockroach-api-key-hier"  # sensibel, nicht im Repo speichern
 
 # --- ZUGRIFFSKONTROLLE ---
 # Wer darf die API aufrufen? 

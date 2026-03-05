@@ -11,12 +11,11 @@ const pgConfig = {
 };
 
 exports.processTicket = async (cloudEvent) => {
-  // 1. Daten aus Pub/Sub lesen
   let messageData;
   let event_id, user_id;
 
   try {
-    // Parse the base64 message data directly from cloudEvent.data
+    // Daten aus Pub/Sub lesen
     messageData = Buffer.from(cloudEvent.data, "base64").toString();
 
     const parsedData = JSON.parse(messageData);
@@ -30,30 +29,30 @@ exports.processTicket = async (cloudEvent) => {
     const client = new Client(pgConfig);
     await client.connect();
 
-    // 2. Transaktion starten (Atomarität)
+    // Transaktion starten
     await client.query("BEGIN");
 
-    // 3. Zeile sperren & Kapazität prüfen (Double-Check & Locking)
+    // Zeile sperren & Kapazität prüfen (Double-Check & Locking)
     const checkCapacity = await client.query(
       "SELECT remaining_capacity FROM events WHERE id = $1 FOR UPDATE",
       [event_id],
     );
 
     if (checkCapacity.rows[0].remaining_capacity > 0) {
-      // 4. Kapazität verringern
+      // Kapazität verringern
       await client.query(
         "UPDATE events SET remaining_capacity = remaining_capacity - 1 WHERE id = $1",
         [event_id],
       );
 
-      // 5. Ticketkauf verbuchen
+      // Ticketkauf verbuchen
       const ticketId = uuidv4();
       await client.query(
         "INSERT INTO tickets (id, event_id, user_id) VALUES ($1, $2, $3)",
         [ticketId, event_id, user_id],
       );
 
-      // 6. Transaktion abschliessen
+      // Transaktion abschliessen
       await client.query("COMMIT");
       console.log(`Erfolg! Ticket ${ticketId} für ${user_id} erstellt.`);
     } else {
