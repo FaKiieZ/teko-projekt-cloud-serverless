@@ -1,4 +1,4 @@
-# 🎫 Teko School Project: Serverless Ticketing System (GCP)
+# 🎫 TEKO Schulprojekt: Serverless Ticketing System (GCP)
 
 Dieses Schulprojekt demonstriert ein hochverfügbares, serverloses Ticket-Buchungssystem auf der Google Cloud Platform (GCP). Es wurde entwickelt, um Lastspitzen effizient zu bewältigen und gleichzeitig durch eine rein serverlose Architektur kosteneffizient zu bleiben.
 
