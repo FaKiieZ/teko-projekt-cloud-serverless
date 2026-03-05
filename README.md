@@ -7,10 +7,10 @@ Dieses Projekt demonstriert ein hochskalierbares, serverloses Ticket-Buchungssys
 Das System nutzt eine Warteschlangen-basierte Architektur (Queue-Worker-Pattern), um Lastspitzen abzufangen und Datenintegrität zu garantieren:
 
 1.  **Frontend (Webapp):** Sendet Kaufanfragen direkt an die Cloud Run function.
-2.  **Validation Function (LF1):** Prüft die Kapazität in der AlloyDB und reiht gültige Anfragen in Pub/Sub ein.
+2.  **Validation Function (LF1):** Prüft die Kapazität in der CockroachDB und reiht gültige Anfragen in Pub/Sub ein.
 3.  **Pub/Sub (Queue):** Puffer für eingehende Bestellungen.
 4.  **Worker Function (LF2):** Verarbeitet Nachrichten aus der Queue, führt Datenbank-Transaktionen (ACID) durch und reduziert die Kapazität.
-5.  **AlloyDB (PostgreSQL):** Hochverfügbare, relationale Datenbank für Events und Tickets.
+5.  **CockroachDB (Serverless):** Cloud-native, verteilte SQL-Datenbank für Events und Tickets (PostgreSQL-kompatibel).
 
 ---
 
@@ -20,6 +20,7 @@ Wir nutzen **Terraform** zur Verwaltung der Infrastruktur. Eine passende `terraf
 
 ### 1. Voraussetzungen
 *   Ein Google Cloud Projekt (ID bereitstellen).
+*   Ein CockroachDB Cloud Account & API Key.
 *   **Abrechnung (Billing) aktiviert:** Das Projekt MUSS in der Google Cloud Console mit einem aktiven Rechnungskonto verknüpft sein (auch für Free Credits), sonst schlägt das Aktivieren der APIs fehl.
 *   **Google Cloud CLI (gcloud) installiert:** [Hier herunterladen](https://cloud.google.com/sdk/docs/install)
 *   **GCP Authentifizierung:** Damit Terraform Zugriff auf dein Konto hat, musst du dich einmalig lokal anmelden:
@@ -32,7 +33,7 @@ Wir nutzen **Terraform** zur Verwaltung der Infrastruktur. Eine passende `terraf
 Navigiere in den `terraform` Ordner und bereite deine Variablen vor:
 
 1. Kopiere die Vorlage: `cp terraform.tfvars.example terraform.tfvars` (oder manuell umbenennen)
-2. Trage deine echten Werte (Projekt-ID, Passwörter, Secrets) in `terraform.tfvars` ein.
+2. Trage deine echten Werte (Projekt-ID, Passwörter, Secrets, Cockroach API Key) in `terraform.tfvars` ein.
 
 Führe dann die Befehle aus:
 
@@ -74,13 +75,13 @@ Um Missbrauch vorzubeugen, ist ein einfaches **API-Secret** konfiguriert. Jede A
 
 ### Kostenschutz
 *   **Max Instances:** Die Cloud Functions sind auf maximal **2 Instanzen** begrenzt, um Kostenexplosionen bei Tests zu vermeiden.
-*   **Kein Redis:** Alle Kapazitätsprüfungen laufen über die AlloyDB, um zusätzliche Memorystore-Kosten zu sparen.
+*   **Serverless DB:** CockroachDB Serverless skaliert automatisch und ist im Free-Tier sehr kostengünstig.
 
 ---
 
-## 📊 Datenbank-Schema (AlloyDB)
+## 📊 Datenbank-Schema (CockroachDB)
 
-Bevor das System funktioniert, muss das Schema in der AlloyDB einmalig angelegt werden:
+Bevor das System funktioniert, muss das Schema in der CockroachDB einmalig angelegt werden. Nutze dazu die SQL-Konsole im CockroachDB Cloud Dashboard oder einen Postgres-Client:
 
 ```sql
 CREATE TABLE events (
@@ -106,7 +107,7 @@ VALUES ('Hallenstadion Konzert', 15000, 15000);
 
 ## 📂 Projektstruktur
 
-*   `terraform/main.tf`: Die gesamte GCP Infrastruktur (IaC).
+*   `terraform/main.tf`: Die gesamte GCP & CockroachDB Infrastruktur (IaC).
 *   `terraform/variables.tf`: Definition der Variablen.
 *   `terraform/terraform.tfvars.example`: Vorlage für Geheimnisse (Secrets).
 *   `terraform/src/validation`: Node.js Code für die Eingangs-Validierung.
