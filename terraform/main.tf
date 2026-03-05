@@ -136,12 +136,12 @@ resource "google_cloudfunctions2_function" "validation_fn" {
 
 # Restrict validation function to specific users only
 resource "google_cloud_run_service_iam_member" "validation_invoker" {
-  for_each = toset(var.invoker_emails)
+  for_each = toset(var.authorized_invokers)
 
   service  = google_cloudfunctions2_function.validation_fn.name
   location = google_cloudfunctions2_function.validation_fn.location
   role     = "roles/run.invoker"
-  member   = "user:${each.value}"
+  member   = each.value
 }
 
 # 7. Worker Function (Pub/Sub Trigger)

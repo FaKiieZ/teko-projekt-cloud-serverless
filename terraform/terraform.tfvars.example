@@ -5,3 +5,12 @@ region     = "us-central1"
 # --- DATENBANK (ALLOYDB) ---
 # Das Passwort für den 'postgres' User in der AlloyDB
 db_password = "ein-sehr-sicheres-passwort-hier-einsetzen"
+
+# --- ZUGRIFFSKONTROLLE ---
+# Wer darf die API aufrufen? 
+# Falls leer, ist die API nicht öffentlich erreichbar.
+# Format: 'user:dein-name@gmail.com', 'group:team@ihredomain.de', 'serviceAccount:xyz@project.iam.gserviceaccount.com'
+authorized_invokers = [
+  "user:dein-name@gmail.com",
+  "user:kollege-name@gmail.com"
+]

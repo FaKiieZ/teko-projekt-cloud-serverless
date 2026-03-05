@@ -27,7 +27,8 @@ variable "cockroach_api_key" {
   sensitive   = true
 }
 
-variable "invoker_emails" {
-  description = "Email addresses of users allowed to invoke the validation function"
+variable "authorized_invokers" {
+  description = "List of IAM members authorized to invoke the validation function (e.g., 'user:email@domain.com', 'group:team@domain.com')."
   type        = list(string)
+  default     = []
 }

@@ -63,7 +63,7 @@ async function initializeSchema(client) {
       CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
     `);
 
-    console.log("✓ Schema initialized successfully");
+    console.log("Schema initialized successfully");
     schemaInitialized = true;
   } catch (err) {
     console.error("Schema initialization error:", err.message);

@@ -30,6 +30,7 @@ Wir nutzen **Terraform** zur Verwaltung der Infrastruktur. Eine passende `terraf
     *Hinweis: Es öffnet sich ein Browserfenster zur Bestätigung.*
 
 ### 2. Infrastruktur hochfahren
+
 Navigiere in den `terraform` Ordner und bereite deine Variablen vor:
 
 1. Kopiere die Vorlage: `cp terraform.tfvars.example terraform.tfvars` (oder manuell umbenennen)
@@ -56,26 +57,44 @@ cd terraform
 
 ## 🔐 Sicherheit & API-Nutzung
 
-### API-Secret Schutz
-Um Missbrauch vorzubeugen, ist ein einfaches **API-Secret** konfiguriert. Jede Anfrage an die Validierungs-Funktion muss einen Authorization-Header enthalten.
+### Zugriffskontrolle (IAM & Restricted API)
 
-**Beispiel-Request (HTTP POST):**
-*   **URL:** Siehe `terraform apply` Output (`api_url`)
-*   **Method:** `POST`
-*   **Headers:**
-    *   `Content-Type: application/json`
-    *   `Authorization: Bearer <DEIN_API_SECRET_AUS_TFVARS>`
-*   **Body:**
-    ```json
-    {
-      "event_id": 1,
-      "user_id": "user123"
-    }
+Die API ist **nicht öffentlich** erreichbar. Nur explizit autorisierte Benutzer (du und deine Kollegen) können die API aufrufen.
+
+1.  **Berechtigung erteilen:** Füge die E-Mail-Adressen in der `terraform/terraform.tfvars` unter `authorized_invokers` hinzu:
+    ```hcl
+    authorized_invokers = [
+      "user:deine-email@gmail.com",
+      "user:kollege@gmail.com"
+    ]
     ```
+2.  **Terraform Apply:** Führe `../terraform apply` erneut aus, um die Berechtigungen zu setzen.
+
+### Authentifizierung beim Testen
+
+Da Google Cloud für den IAM-Check den `Authorization`-Header (ID-Token) verwendet, nutzen wir für unser internes Anwendungs-Secret den Header `X-API-Secret`.
+
+**Beispiel-Request (PowerShell/cURL):**
+Um die API zu testen, musst du ein Google Identity Token generieren:
+
+```powershell
+$URL = (../terraform output -raw api_url)
+$TOKEN = (gcloud auth print-identity-token)
+$SECRET = "DEIN_API_SECRET_AUS_TFVARS"
+
+
+curl -X POST $URL `
+  -H "Authorization: Bearer $TOKEN" `
+  -H "X-API-Secret: $SECRET" `
+  -H "Content-Type: application/json" `
+  -d '{"event_id": 1, "user_id": "test-user-001"}'
+```
 
 ### Kostenschutz
-*   **Max Instances:** Die Cloud Functions sind auf maximal **2 Instanzen** begrenzt, um Kostenexplosionen bei Tests zu vermeiden.
-*   **Serverless DB:** CockroachDB Serverless skaliert automatisch und ist im Free-Tier sehr kostengünstig.
+
+- **Max Instances:** Die Cloud Functions sind auf maximal **2 Instanzen** begrenzt, um Kostenexplosionen bei Tests zu vermeiden.
+- **Kein Redis:** Alle Kapazitätsprüfungen laufen über die AlloyDB, um zusätzliche Memorystore-Kosten zu sparen.
+- **Serverless DB:** CockroachDB Serverless skaliert automatisch und ist im Free-Tier sehr kostengünstig.
 
 ---
 
@@ -99,7 +118,7 @@ CREATE TABLE tickets (
 );
 
 -- Beispiel-Daten
-INSERT INTO events (name, total_capacity, remaining_capacity) 
+INSERT INTO events (name, total_capacity, remaining_capacity)
 VALUES ('Hallenstadion Konzert', 15000, 15000);
 ```
 
