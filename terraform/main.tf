@@ -9,6 +9,10 @@ terraform {
       source  = "cockroachdb/cockroach"
       version = "1.17.0"
     }
+    postgresql = {
+      source  = "cyrilgdn/postgresql"
+      version = "1.25.0"
+    }
   }
 }
 
@@ -19,6 +23,17 @@ provider "google" {
 
 provider "cockroach" {
   apikey = var.cockroach_api_key
+}
+
+# PostgreSQL Provider für die Schema-Provisionierung
+provider "postgresql" {
+  host            = cockroach_cluster.ticketing_db.regions[0].sql_dns
+  port            = 26257
+  database        = cockroach_database.main.name
+  username        = cockroach_sql_user.db_user.name
+  password        = var.db_password
+  sslmode         = "require"
+  connect_timeout = 15
 }
 
 # 2. Erforderliche APIs aktivieren
@@ -64,6 +79,30 @@ resource "cockroach_sql_user" "db_user" {
 resource "cockroach_database" "main" {
   name       = "ticketing"
   cluster_id = cockroach_cluster.ticketing_db.id
+}
+
+# DB Schema Provisioning
+
+# Wir nutzen ein lokales Node.js Script, um das Schema zu initialisieren.
+# Dies stellt sicher, dass die Tabellen und das initiale Event vorhanden sind.
+resource "null_resource" "db_init" {
+  depends_on = [cockroach_database.main, cockroach_sql_user.db_user]
+
+  provisioner "local-exec" {
+    # Installiert Abhängigkeiten (pg) und führt das Script `init-db.js` aus
+    command = "npm install && node init-db.js"
+    environment = {
+      DB_HOST     = cockroach_cluster.ticketing_db.regions[0].sql_dns
+      DB_NAME     = cockroach_database.main.name
+      DB_USER     = cockroach_sql_user.db_user.name
+      DB_PASSWORD = var.db_password
+    }
+  }
+
+  triggers = {
+    # Führt das Script erneut aus, wenn sich der Host ändert
+    db_host = cockroach_cluster.ticketing_db.regions[0].sql_dns
+  }
 }
 
 # 4. Messaging: Pub/Sub Topic
@@ -123,9 +162,9 @@ resource "google_cloudfunctions2_function" "validation_fn" {
   service_config {
     max_instance_count = 5
     available_memory   = "256Mi"
+
     environment_variables = {
       TOPIC_ID    = google_pubsub_topic.ticket_queue.id
-      # Verbindungsinfos für CockroachDB
       DB_HOST     = cockroach_cluster.ticketing_db.regions[0].sql_dns
       DB_NAME     = cockroach_database.main.name
       DB_USER     = cockroach_sql_user.db_user.name
@@ -169,6 +208,7 @@ resource "google_cloudfunctions2_function" "worker_fn" {
   service_config {
     max_instance_count = 5
     available_memory   = "256Mi"
+
     environment_variables = {
       DB_HOST     = cockroach_cluster.ticketing_db.regions[0].sql_dns
       DB_NAME     = cockroach_database.main.name

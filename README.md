@@ -56,7 +56,7 @@ Das Projekt wird vollständig via Infrastructure as Code (Terraform) verwaltet.
 Bevor Terraform gestartet werden kann, ist eine Anmeldung bei GCP erforderlich:
 
 ```powershell
-gcloud auth application-default login
+gcloud auth login
 ```
 
 ### 3. Infrastruktur starten
@@ -89,20 +89,60 @@ curl.exe -X POST $URL `
   -d '{"event_id": "1", "user_id": "test-user-001"}'
 ```
 
-### Lasttest / Batch-Test
+---
 
-Im Root-Verzeichnis befindet sich ein PowerShell-Skript `test-call.ps1`, das mehrere Anfragen parallel sendet, um die Skalierung und die Warteschlange zu testen. Passe die `$url` im Skript an deinen Output an und starte es.
+## 🚀 Lasttest-Leitfaden (Scale Test)
+
+Das System ist darauf ausgelegt, massiv parallelisierte Anfragen zu verarbeiten. Um einen Test mit z.B. **16.000 Anfragen** durchzuführen, folge diesen Schritten:
+
+### 1. Kapazität in Terraform erhöhen
+
+Stelle sicher, dass die `max_instance_count` in der `terraform/main.tf` hoch genug eingestellt ist:
+
+- **Validation Function:** `50` (kann bis zu 4.000 parallele Requests verarbeiten: 50 Instanzen × 80 Concurrency).
+- **Worker Function:** `20` (begrenzt durch DB-Verbindungen im Free-Tier).
+
+### 2. Durchführung mit PowerShell
+
+Nutze das mitgelieferte Skript `test-call.ps1`. Für 16.000 Anfragen wird ein hohes Throttle-Limit empfohlen, aber achte auf die Ressourcen deines lokalen PCs (RAM/CPU):
+
+```powershell
+# Beispiel für einen massiven Testlauf
+# $totalRequests = 1..16000
+# ThrottleLimit 100-500 empfohlen (je nach PC-Leistung)
+.\test-call.ps1
+```
+
+### 3. Monitoring & Verifikation
+
+Während und nach dem Test kannst du den Erfolg in der GCP Console oder via SQL prüfen:
+
+- **Cloud Functions Logs:** Prüfe auf "SOLD_OUT" Meldungen oder Fehler.
+- **SQL Check:**
+
+  ```sql
+  -- Prüfe die Anzahl der verkauften Tickets
+  SELECT count(*) FROM tickets;
+  -- Prüfe die Restkapazität des Events
+  SELECT remaining_capacity FROM events WHERE id = '1';
+  ```
+
+### ⚠️ Wichtige Hinweise zum Free-Tier
+
+- **Kosten:** 16.000 Requests verbrauchen weniger als 1% des monatlichen GCP Free-Tier Kontingents (2 Mio. Requests).
+- **Datenbank:** CockroachDB Serverless erlaubt bis zu 10 Mio. RUs pro Monat. Dieser Test verbraucht ca. 50k-80k RUs.
+- **Lokale Limits:** PowerShell kann bei sehr hohen `-ThrottleLimit` (>500) instabil werden. Erhöhe das Limit schrittweise.
 
 ---
 
 ## 📊 Datenbank-Schema
 
-Die **Validation Function** prüft beim ersten Aufruf automatisch, ob das Schema in der CockroachDB existiert. Falls nicht, wird es automatisch mit folgendem Aufbau angelegt:
+Das Datenbankschema wird **automatisch via Terraform** provisioniert. Sobald `terraform apply` abgeschlossen ist, sind folgende Tabellen in der CockroachDB vorhanden:
 
 - **events**: Speichert Events, Gesamtkapazität und Restplätze.
 - **tickets**: Speichert die vergebenen Tickets mit Referenz zum User und Event.
 
-Ein Beispiel-Event ("TEKO Konzert", 35 Plätze) wird bei der Initialisierung automatisch erstellt.
+Ein Beispiel-Event ("Pitbull im Hallenstadion Zürich", 15000 Plätze) wird bei der Initialisierung automatisch erstellt.
 
 ---
 
@@ -130,3 +170,31 @@ Um hohe Kosten während der Entwicklung zu vermeiden:
 - **Max Instances:** Die Cloud Functions sind auf 5 Instanzen limitiert.
 - **Auto-Delete:** Führe `terraform destroy` aus, wenn das Projekt nicht mehr benötigt wird.
 - **Free Tiers:** Das Projekt nutzt primär die Free-Tier Kontingente von GCP und CockroachDB.
+
+---
+
+## Hilfreiche SQL Scripts zum testen
+
+Alle Events laden:
+
+```sql
+SELECT * FROM events;
+```
+
+Alle Tickets laden:
+
+```sql
+SELECT * FROM tickets;
+```
+
+Initiales Event auf 15'000 Plätze zurücksetzen:
+
+```sql
+UPDATE events SET total_capacity = 15000, remaining_capacity = 15000 WHERE id = 1;
+```
+
+Alle Tickets löschen:
+
+```sql
+delete from tickets;
+```

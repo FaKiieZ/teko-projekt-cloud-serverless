@@ -14,67 +14,6 @@ const pgConfig = {
   ssl: true,
 };
 
-let schemaInitialized = false;
-
-async function initializeSchema(client) {
-  if (schemaInitialized) return;
-
-  try {
-    // Prüfen ob events Tabelle bereits existiert (über ein Query)
-    try {
-      await client.query("SELECT 1 FROM events LIMIT 1");
-      console.log("Schema already exists");
-      schemaInitialized = true;
-      return;
-    } catch (checkErr) {
-      // Tabelle existiert noch nicht
-      if (checkErr.code !== "42P01") {
-        throw checkErr; // Wenn ein anderer Fehler auftritt, diesen werfen.
-      }
-    }
-
-    console.log("Creating database schema...");
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS events (
-        id STRING PRIMARY KEY,
-        event_name STRING NOT NULL,
-        total_capacity INT NOT NULL,
-        remaining_capacity INT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS tickets (
-        id STRING PRIMARY KEY,
-        event_id STRING NOT NULL REFERENCES events(id),
-        user_id STRING NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_tickets_event_id ON tickets(event_id);
-    `);
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
-    `);
-
-    await client.query(
-      "INSERT INTO events (id, event_name, total_capacity, remaining_capacity) VALUES ('1', 'TEKO Konzert', 35, 35)",
-    );
-
-    console.log("Schema initialized successfully");
-    schemaInitialized = true;
-  } catch (err) {
-    console.error("Schema initialization error:", err.message);
-    schemaInitialized = false;
-    throw err;
-  }
-}
-
 exports.validateTicket = async (req, res) => {
   const { event_id, user_id } = req.body;
   if (!event_id || !user_id) {
@@ -84,9 +23,6 @@ exports.validateTicket = async (req, res) => {
   const client = new Client(pgConfig);
   try {
     await client.connect();
-
-    // Schema bei erstem Durchlauf generieren
-    await initializeSchema(client);
 
     // Schnelle Abfrage der Restkapazität
     const result = await client.query(

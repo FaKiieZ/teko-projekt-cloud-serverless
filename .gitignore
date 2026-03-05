@@ -10,3 +10,6 @@
 
 # Zip files generated for functions
 terraform/files/*.zip
+
+# Node.js
+node_modules
