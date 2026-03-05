@@ -63,7 +63,7 @@ async function initializeSchema(client) {
     `);
 
     await client.query(
-      "INSERT INTO events (id, event_name, total_capacity, remaining_capacity) VALUES ('1', 'TEKO Konzert vo Giuseppe', 35, 35)",
+      "INSERT INTO events (id, event_name, total_capacity, remaining_capacity) VALUES ('1', 'TEKO Konzert', 35, 35)",
     );
 
     console.log("Schema initialized successfully");

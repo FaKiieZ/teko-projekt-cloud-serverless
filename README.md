@@ -1,134 +1,132 @@
-# Teko School Project: Serverless Ticketing System (GCP)
+# 🎫 Teko School Project: Serverless Ticketing System (GCP)
 
-Dieses Projekt demonstriert ein hochskalierbares, serverloses Ticket-Buchungssystem auf der Google Cloud Platform (GCP). Es wurde im Rahmen eines Schulprojekts entwickelt und optimiert für Kosteneffizienz und Ausfallsicherheit.
-
-## 🏛️ Architektur-Übersicht
-
-Das System nutzt eine Warteschlangen-basierte Architektur (Queue-Worker-Pattern), um Lastspitzen abzufangen und Datenintegrität zu garantieren:
-
-1.  **Frontend (Webapp):** Sendet Kaufanfragen direkt an die Cloud Run function.
-2.  **Validation Function (LF1):** Prüft die Kapazität in der CockroachDB und reiht gültige Anfragen in Pub/Sub ein.
-3.  **Pub/Sub (Queue):** Puffer für eingehende Bestellungen.
-4.  **Worker Function (LF2):** Verarbeitet Nachrichten aus der Queue, führt Datenbank-Transaktionen (ACID) durch und reduziert die Kapazität.
-5.  **CockroachDB (Serverless):** Cloud-native, verteilte SQL-Datenbank für Events und Tickets (PostgreSQL-kompatibel).
+Dieses Schulprojekt demonstriert ein hochverfügbares, serverloses Ticket-Buchungssystem auf der Google Cloud Platform (GCP). Es wurde entwickelt, um Lastspitzen effizient zu bewältigen und gleichzeitig durch eine rein serverlose Architektur kosteneffizient zu bleiben.
 
 ---
 
-## 🛠️ Lokales Setup & Bereitstellung
+## 🏗️ Architektur-Übersicht
 
-Wir nutzen **Terraform** zur Verwaltung der Infrastruktur. Eine passende `terraform.exe` liegt bereits im Hauptverzeichnis.
+Das System nutzt eine ereignisgesteuerte Warteschlangen-Architektur (Event-Driven Architecture), um Anfragen asynchron zu verarbeiten:
+
+```mermaid
+graph LR
+    subgraph "Client"
+        U[Benutzer / Test-Script]
+    end
+
+    subgraph "Ingress & Queue"
+        LF1[Validation Function <br/><i>Cloud Run Function</i>]
+        Queue[(Pub/Sub <br/><i>Ticket Queue</i>)]
+    end
+
+    subgraph "Processing & Persistence"
+        LF2[Worker Function <br/><i>Cloud Run Function</i>]
+        DB[(CockroachDB Serverless <br/><i>PostgreSQL compatible</i>)]
+    end
+
+    %% Datenfluss
+    U -->|1. Ticket-Anfrage (HTTP)| LF1
+    LF1 -->|2. Validieren & Einreihen| Queue
+    Queue -->|3. Event-Trigger| LF2
+    LF2 -->|4. Transaktion verbuchen| DB
+```
+
+### Komponenten-Details
+
+1. **Validation Function (LF1):** Nimmt HTTP-Requests entgegen, validiert die Eingaben, prüft die grobe Verfügbarkeit und stellt gültige Anfragen in die Pub/Sub-Warteschlange.
+2. **Pub/Sub Topic:** Dient als Puffer, um Lastspitzen abzufangen und sicherzustellen, dass keine Bestellung verloren geht.
+3. **Worker Function (LF2):** Verarbeitet Nachrichten aus der Warteschlange, führt die finale Datenbank-Transaktion durch (Atomic Update) und reduziert die Kapazität.
+4. **CockroachDB Serverless:** Eine verteilte, PostgreSQL-kompatible Datenbank, die automatisch skaliert und im Free-Tier extrem kostengünstig ist.
+
+---
+
+## 🚀 Lokales Setup & Bereitstellung
+
+Das Projekt wird vollständig via Infrastructure as Code (Terraform) verwaltet.
 
 ### 1. Voraussetzungen
-*   Ein Google Cloud Projekt (ID bereitstellen).
-*   Ein CockroachDB Cloud Account & API Key.
-*   **Abrechnung (Billing) aktiviert:** Das Projekt MUSS in der Google Cloud Console mit einem aktiven Rechnungskonto verknüpft sein (auch für Free Credits), sonst schlägt das Aktivieren der APIs fehl.
-*   **Google Cloud CLI (gcloud) installiert:** [Hier herunterladen](https://cloud.google.com/sdk/docs/install)
-*   **GCP Authentifizierung:** Damit Terraform Zugriff auf dein Konto hat, musst du dich einmalig lokal anmelden:
-    ```powershell
-    gcloud auth application-default login
-    ```
-    *Hinweis: Es öffnet sich ein Browserfenster zur Bestätigung.*
 
-### 2. Infrastruktur hochfahren
+- **Terraform** installiert ([Download](https://www.terraform.io/downloads))
+- **Google Cloud CLI (gcloud)** installiert ([Download](https://cloud.google.com/sdk/docs/install))
+- **Ein GCP-Projekt** mit aktivem Rechnungskonto (für Cloud Functions/Build erforderlich)
+- **CockroachDB Cloud Account** und ein API-Key für die Cluster-Provisionierung.
 
-Navigiere in den `terraform` Ordner und bereite deine Variablen vor:
+### 2. Authentifizierung
 
-1. Kopiere die Vorlage: `cp terraform.tfvars.example terraform.tfvars` (oder manuell umbenennen)
-2. Trage deine echten Werte (Projekt-ID, Passwörter, Secrets, Cockroach API Key) in `terraform.tfvars` ein.
-
-Führe dann die Befehle aus:
+Bevor Terraform gestartet werden kann, ist eine Anmeldung bei GCP erforderlich:
 
 ```powershell
-# In das Terraform Verzeichnis wechseln
-cd terraform
-
-# Provider initialisieren (Plugins laden)
-../terraform init
-
-# Infrastruktur planen und ausführen
-../terraform apply
-
-# --- INFRASTRUKTUR LÖSCHEN (Kosten vermeiden!) ---
-# Wenn das Projekt fertig ist oder du Kosten sparen willst:
-../terraform destroy
+gcloud auth application-default login
 ```
+
+### 3. Infrastruktur starten
+
+1. Navigiere in den Ordner: `cd terraform`
+2. Kopiere `terraform.tfvars.example` zu `terraform.tfvars`.
+3. Trage deine Werte (Projekt-ID, Regionen, Passwörter, Cockroach API-Key) in die `terraform.tfvars` ein.
+4. Führe die Bereitstellung aus:
+
+   ```powershell
+   terraform init
+   terraform apply
+   ```
 
 ---
 
-## 🔐 Sicherheit & API-Nutzung
+## 🧪 Testen des Systems
 
-### Zugriffskontrolle (IAM & Restricted API)
+Das System ist standardmässig **nicht öffentlich** erreichbar. Nur autorisierte Benutzer (siehe `authorized_invokers` in `variables.tf`) können die API aufrufen.
 
-Die API ist **nicht öffentlich** erreichbar. Nur explizit autorisierte Benutzer (du und deine Kollegen) können die API aufrufen.
-
-1.  **Berechtigung erteilen:** Füge die E-Mail-Adressen in der `terraform/terraform.tfvars` unter `authorized_invokers` hinzu:
-    ```hcl
-    authorized_invokers = [
-      "user:deine-email@gmail.com",
-      "user:kollege@gmail.com"
-    ]
-    ```
-2.  **Terraform Apply:** Führe `../terraform apply` erneut aus, um die Berechtigungen zu setzen.
-
-### Authentifizierung beim Testen
-
-Da Google Cloud für den IAM-Check den `Authorization`-Header (ID-Token) verwendet, nutzen wir für unser internes Anwendungs-Secret den Header `X-API-Secret`.
-
-**Beispiel-Request (PowerShell/cURL):**
-Um die API zu testen, musst du ein Google Identity Token generieren:
+### Manueller Test (PowerShell)
 
 ```powershell
-$URL = (../terraform output -raw api_url)
+$URL = (terraform output -raw api_url)
 $TOKEN = (gcloud auth print-identity-token)
-$SECRET = "DEIN_API_SECRET_AUS_TFVARS"
 
-
-curl -X POST $URL `
+curl.exe -X POST $URL `
   -H "Authorization: Bearer $TOKEN" `
-  -H "X-API-Secret: $SECRET" `
   -H "Content-Type: application/json" `
-  -d '{"event_id": 1, "user_id": "test-user-001"}'
+  -d '{"event_id": "1", "user_id": "test-user-001"}'
 ```
 
-### Kostenschutz
+### Lasttest / Batch-Test
 
-- **Max Instances:** Die Cloud Functions sind auf maximal **2 Instanzen** begrenzt, um Kostenexplosionen bei Tests zu vermeiden.
-- **Kein Redis:** Alle Kapazitätsprüfungen laufen über die AlloyDB, um zusätzliche Memorystore-Kosten zu sparen.
-- **Serverless DB:** CockroachDB Serverless skaliert automatisch und ist im Free-Tier sehr kostengünstig.
+Im Root-Verzeichnis befindet sich ein PowerShell-Skript `test-call.ps1`, das mehrere Anfragen parallel sendet, um die Skalierung und die Warteschlange zu testen. Passe die `$url` im Skript an deinen Output an und starte es.
 
 ---
 
-## 📊 Datenbank-Schema (CockroachDB)
+## 📊 Datenbank-Schema
 
-Bevor das System funktioniert, muss das Schema in der CockroachDB einmalig angelegt werden. Nutze dazu die SQL-Konsole im CockroachDB Cloud Dashboard oder einen Postgres-Client:
+Die **Validation Function** prüft beim ersten Aufruf automatisch, ob das Schema in der CockroachDB existiert. Falls nicht, wird es automatisch mit folgendem Aufbau angelegt:
 
-```sql
-CREATE TABLE events (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    total_capacity INTEGER NOT NULL,
-    remaining_capacity INTEGER NOT NULL
-);
+- **events**: Speichert Events, Gesamtkapazität und Restplätze.
+- **tickets**: Speichert die vergebenen Tickets mit Referenz zum User und Event.
 
-CREATE TABLE tickets (
-    id UUID PRIMARY KEY,
-    event_id INTEGER REFERENCES events(id),
-    user_id VARCHAR(255),
-    purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Beispiel-Daten
-INSERT INTO events (name, total_capacity, remaining_capacity)
-VALUES ('Hallenstadion Konzert', 15000, 15000);
-```
+Ein Beispiel-Event ("TEKO Konzert", 35 Plätze) wird bei der Initialisierung automatisch erstellt.
 
 ---
 
 ## 📂 Projektstruktur
 
-*   `terraform/main.tf`: Die gesamte GCP & CockroachDB Infrastruktur (IaC).
-*   `terraform/variables.tf`: Definition der Variablen.
-*   `terraform/terraform.tfvars.example`: Vorlage für Geheimnisse (Secrets).
-*   `terraform/src/validation`: Node.js Code für die Eingangs-Validierung.
-*   `terraform/src/worker`: Node.js Code für die finale Ticket-Verbuchung.
-*   `terraform.exe`: Terraform Binary für die lokale Ausführung.
+```text
+.
+├── docs/               # Dokumentation & Diagramme
+├── terraform/          # Infrastruktur-as-Code (Terraform)
+│   ├── src/            # Quellcode der Cloud Functions
+│   │   ├── validation/ # Node.js 24 Code (Ingress & Auth)
+│   │   └── worker/     # Node.js 24 Code (DB Writing)
+│   ├── main.tf         # Haupt-Terraform Datei (GCP & Cockroach)
+│   └── variables.tf    # Konfigurations-Variablen
+├── test-call.ps1       # Lokales Test-Skript (PowerShell)
+└── README.md           # Diese Dokumentation
+```
+
+---
+
+## 💰 Kostenkontrolle
+
+Um hohe Kosten während der Entwicklung zu vermeiden:
+
+- **Max Instances:** Die Cloud Functions sind auf 5 Instanzen limitiert.
+- **Auto-Delete:** Führe `terraform destroy` aus, wenn das Projekt nicht mehr benötigt wird.
+- **Free Tiers:** Das Projekt nutzt primär die Free-Tier Kontingente von GCP und CockroachDB.
