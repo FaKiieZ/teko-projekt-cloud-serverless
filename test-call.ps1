@@ -12,7 +12,6 @@ $requests | ForEach-Object -Parallel {
     $currentToken = $using:token
     $id = $_
     
-    # Payload-String mit korrektem PowerShell-Escaping
     $payload = "{`"event_id`": `"1`", `"user_id`": `"test-user-$id`"}"
     
     # Sendet Request und speichert den Status Code
