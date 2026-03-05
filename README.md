@@ -6,30 +6,7 @@ Dieses Schulprojekt demonstriert ein hochverfügbares, serverloses Ticket-Buchun
 
 ## 🏗️ Architektur-Übersicht
 
-Das System nutzt eine ereignisgesteuerte Warteschlangen-Architektur (Event-Driven Architecture), um Anfragen asynchron zu verarbeiten:
-
-```mermaid
-graph LR
-    subgraph "Client"
-        U[Benutzer / Test-Script]
-    end
-
-    subgraph "Ingress & Queue"
-        LF1[Validation Function <br/><i>Cloud Run Function</i>]
-        Queue[(Pub/Sub <br/><i>Ticket Queue</i>)]
-    end
-
-    subgraph "Processing & Persistence"
-        LF2[Worker Function <br/><i>Cloud Run Function</i>]
-        DB[(CockroachDB Serverless <br/><i>PostgreSQL compatible</i>)]
-    end
-
-    %% Datenfluss
-    U -->|1. Ticket-Anfrage (HTTP)| LF1
-    LF1 -->|2. Validieren & Einreihen| Queue
-    Queue -->|3. Event-Trigger| LF2
-    LF2 -->|4. Transaktion verbuchen| DB
-```
+Das System nutzt eine ereignisgesteuerte Warteschlangen-Architektur (Event-Driven Architecture), um Anfragen asynchron zu verarbeiten.
 
 ### Komponenten-Details
 
