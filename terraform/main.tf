@@ -79,6 +79,8 @@ resource "cockroach_sql_user" "db_user" {
 resource "cockroach_database" "main" {
   name       = "ticketing"
   cluster_id = cockroach_cluster.ticketing_db.id
+
+  depends_on = [cockroach_sql_user.db_user]
 }
 
 # DB Schema Provisioning
