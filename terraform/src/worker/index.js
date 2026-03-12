@@ -1,4 +1,4 @@
-const { Client } = require("pg");
+const { Pool } = require("pg");
 const { v4: uuidv4 } = require("uuid");
 
 const pgConfig = {
@@ -8,7 +8,13 @@ const pgConfig = {
   database: process.env.DB_NAME,
   port: 26257,
   ssl: true,
+  max: 10, // Maximal 10 Connections pro Instanz
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 };
+
+// Globaler Pool zur Wiederverwendung (ausserhalb der Handler-Funktion)
+const pool = new Pool(pgConfig);
 
 exports.processTicket = async (cloudEvent) => {
   let messageData;
@@ -17,7 +23,6 @@ exports.processTicket = async (cloudEvent) => {
   try {
     // Daten aus Pub/Sub lesen
     messageData = Buffer.from(cloudEvent.data, "base64").toString();
-
     const parsedData = JSON.parse(messageData);
     event_id = parsedData.event_id;
     user_id = parsedData.user_id;
@@ -26,41 +31,38 @@ exports.processTicket = async (cloudEvent) => {
       `Verarbeite Ticketkauf für User: ${user_id}, Event: ${event_id}`,
     );
 
-    const client = new Client(pgConfig);
-    await client.connect();
+    /**
+     * ATOMIC TICKET PURCHASE:
+     * 1. Common Table Expression (CTE) versucht, die Kapazität zu reduzieren.
+     * 2. Falls erfolgreich (remaining_capacity > 0), wird eine Zeile zurückgegeben.
+     * 3. Der INSERT nutzt dieses Ergebnis als Quelle. Findet das UPDATE nicht statt,
+     *    wird auch kein Ticket eingefügt.
+     * 4. Alles passiert in einem einzigen Datenbank-Roundtrip.
+     */
+    const ticketId = uuidv4();
+    const query = `
+      WITH updated AS (
+        UPDATE events
+        SET remaining_capacity = remaining_capacity - 1
+        WHERE id = $1 AND remaining_capacity > 0
+        RETURNING id
+      )
+      INSERT INTO tickets (id, event_id, user_id)
+      SELECT $2, $1, $3
+      FROM updated
+      RETURNING id;
+    `;
 
-    // Transaktion starten
-    await client.query("BEGIN");
+    const result = await pool.query(query, [event_id, ticketId, user_id]);
 
-    // Zeile sperren & Kapazität prüfen (Double-Check & Locking)
-    const checkCapacity = await client.query(
-      "SELECT remaining_capacity FROM events WHERE id = $1 FOR UPDATE",
-      [event_id],
-    );
-
-    if (checkCapacity.rows[0].remaining_capacity > 0) {
-      // Kapazität verringern
-      await client.query(
-        "UPDATE events SET remaining_capacity = remaining_capacity - 1 WHERE id = $1",
-        [event_id],
-      );
-
-      // Ticketkauf verbuchen
-      const ticketId = uuidv4();
-      await client.query(
-        "INSERT INTO tickets (id, event_id, user_id) VALUES ($1, $2, $3)",
-        [ticketId, event_id, user_id],
-      );
-
-      // Transaktion abschliessen
-      await client.query("COMMIT");
+    if (result.rowCount > 0) {
       console.log(`Erfolg! Ticket ${ticketId} für ${user_id} erstellt.`);
     } else {
-      console.log(`Fehlgeschlagen: Event ${event_id} ist jetzt ausverkauft.`);
-      await client.query("ROLLBACK");
+      console.log(
+        `Fehlgeschlagen: Event ${event_id} ist ausverkauft oder existiert nicht.`,
+      );
+      // In diesem Fall wurde kein Update gemacht, also keine Tickets verkauft
     }
-
-    await client.end();
   } catch (err) {
     console.error("Kritischer Fehler bei der Ticketverarbeitung:", err);
     throw err; // Damit Pub/Sub bei Fehlern retried

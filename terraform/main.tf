@@ -162,7 +162,7 @@ resource "google_cloudfunctions2_function" "validation_fn" {
   }
 
   service_config {
-    max_instance_count = 5
+    max_instance_count = 30
     available_memory   = "256Mi"
 
     environment_variables = {
@@ -208,7 +208,7 @@ resource "google_cloudfunctions2_function" "worker_fn" {
   }
 
   service_config {
-    max_instance_count = 5
+    max_instance_count = 10
     available_memory   = "256Mi"
 
     environment_variables = {

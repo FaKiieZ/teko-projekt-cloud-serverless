@@ -175,3 +175,14 @@ Alle Tickets löschen:
 ```sql
 delete from tickets;
 ```
+
+Zeitspanne der Ticket-Erstellung (Performance-Analyse). Dieses Query kann nach der Ausführung von `test-call.ps1` verwendet werden, um die tatsächliche Durchlaufzeit und Performance des Systems zu messen:
+
+```sql
+SELECT
+  MIN(created_at) AS first_ticket_created_at,
+  MAX(created_at) AS last_ticket_created_at,
+  MAX(created_at) - MIN(created_at) AS time_elapsed,
+  COUNT(*) AS total_tickets_created
+FROM tickets;
+```
