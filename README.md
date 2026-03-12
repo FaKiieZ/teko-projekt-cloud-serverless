@@ -149,7 +149,7 @@ Ein Beispiel-Event ("Pitbull im Hallenstadion Zürich", 15000 Plätze) wird bei 
 
 Um hohe Kosten während der Entwicklung zu vermeiden:
 
-- **Max Instances:** Die Cloud Functions sind auf 5 Instanzen limitiert.
+- **Max Instances:** Die Cloud Functions sind limitiert (Validation: 30, Worker: 10).
 - **Auto-Delete:** Führe `terraform destroy` aus, wenn das Projekt nicht mehr benötigt wird.
 - **Free Tiers:** Das Projekt nutzt primär die Free-Tier Kontingente von GCP und CockroachDB.
 
