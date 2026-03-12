@@ -23,8 +23,8 @@ graph LR
     %% Datenfluss
     U -->|1. Ticket-Anfrage| AGW
     AGW --> LF1
-    LF1 -->|2. Validieren & Einreihen| Queue
     LF1 -.->|2a. Vorab-Check Kapazität| Cache
+    LF1 -->|2b. Validieren & Einreihen| Queue
     Queue -->|3. Event-Trigger| LF2
     LF2 -->|4. Transaktion verbuchen| DB
     LF2 -.->|5. Status aktualisieren| Cache
