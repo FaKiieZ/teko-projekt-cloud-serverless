@@ -1,5 +1,7 @@
 # Architekturskizze
 
+## Initiale Architekturskizze (Planung)
+
 ```mermaid
 graph LR
     subgraph "Client-Seite"
@@ -71,3 +73,29 @@ Der Ort, an dem die Transaktionen final und dauerhaft gespeichert werden (z. B. 
 ### In-Memory Cache
 
 Im Memory-Cache wird der aktuelle Status von Events und Ticket-Käufen festgehalten.
+
+## Realisierte Architekturskizze
+
+```mermaid
+graph LR
+    subgraph "Client-Seite"
+        U[Benutzer / HTTP-Request]
+    end
+
+    subgraph "Eingang & Warteschlange"
+        LF1[Validierungs-Funktion / Skalierbar]
+        Queue[(Nachrichten-Warteschlange)]
+    end
+
+    subgraph "Verarbeitung & Speicherung"
+        LF2[Worker-Funktionen / Skalierbar]
+        DB[(Datenbank)]
+    end
+
+    %% Datenfluss
+    U -->|1. Ticket-Anfrage| LF1
+    LF1 -.->|2a. Vorab-Check Kapazität| DB
+    LF1 -->|2b. Validieren & Einreihen| Queue
+    Queue -->|3. Event-Trigger| LF2
+    LF2 -->|4. Transaktion verbuchen & Status aktualisieren| DB
+```
