@@ -37,7 +37,8 @@ exports.processTicket = async (cloudEvent) => {
      * 2. Falls erfolgreich (remaining_capacity > 0), wird eine Zeile zurückgegeben.
      * 3. Der INSERT nutzt dieses Ergebnis als Quelle. Findet das UPDATE nicht statt,
      *    wird auch kein Ticket eingefügt.
-     * 4. Alles passiert in einem einzigen Datenbank-Roundtrip.
+     * 4. Alles passiert in einer einzigen atomaren Transaktion innerhalb eines
+     *    einzelnen Datenbank-Roundtrips.
      */
     const ticketId = uuidv4();
     const query = `
