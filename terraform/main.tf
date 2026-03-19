@@ -62,7 +62,7 @@ resource "cockroach_cluster" "ticketing_db" {
   ]
   serverless = {
     usage_limits = {
-      request_unit_limit = 1000000
+      request_unit_limit = 50000000
       storage_mib_limit  = 5120
     }
   }
