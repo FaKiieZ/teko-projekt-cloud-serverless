@@ -172,7 +172,7 @@ SELECT * FROM tickets;
 Initiales Event auf 15'000 Plätze zurücksetzen:
 
 ```sql
-UPDATE events SET total_capacity = 15000, remaining_capacity = 15000 WHERE id = 1;
+UPDATE events SET total_capacity = 15000, remaining_capacity = 15000;
 ```
 
 Alle Tickets löschen:
